@@ -1,0 +1,1461 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>1A2B 數字密碼戰</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', 'Noto Sans TC', sans-serif;
+      background-color: #f7f9fb;
+    }
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20%, 60% { transform: translateX(-8px); }
+      40%, 80% { transform: translateX(8px); }
+    }
+    .shake-error {
+      animation: shake 0.35s cubic-bezier(.36,.07,.19,.97) both;
+      border-color: #ef4444 !important;
+      box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.2) !important;
+    }
+    .custom-scroll::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb {
+      background-color: #cbd5e1;
+      border-radius: 9999px;
+    }
+    .canvas-touch {
+      touch-action: none;
+    }
+  </style>
+</head>
+<body class="text-slate-800 antialiased min-h-screen flex flex-col justify-between selection:bg-indigo-100 selection:text-indigo-700">
+
+  <!-- Top Navigation Header -->
+  <header class="bg-white/80 backdrop-blur border-b border-slate-200 sticky top-0 z-30 px-4 py-3 sm:px-8">
+    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-black shadow-md shadow-indigo-200 text-lg">
+          1A
+        </div>
+        <div>
+          <h1 class="font-bold text-lg sm:text-xl text-slate-900 leading-tight">1A2B 數字解碼</h1>
+          <p class="text-xs text-slate-500 font-medium">支援重複數字與雙人互出模式</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <button id="ruleModalBtn" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 transition">
+          <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+          規則與重複計算說明
+        </button>
+        <button id="historyDrawerBtn" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 transition">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+          歷史紀錄與複盤
+        </button>
+        <button id="restartBtn" class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold bg-rose-50 hover:bg-rose-100 text-rose-600 transition">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+          重新開始
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Layout -->
+  <main class="max-w-7xl mx-auto w-full p-4 sm:p-6 lg:p-8 flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+    <!-- Left Column: Controls & Game Interaction (7 cols on lg) -->
+    <div class="lg:col-span-7 flex flex-col gap-5">
+      
+      <!-- Setting & Status Card -->
+      <div class="bg-white rounded-2xl p-5 border border-slate-200/90 shadow-sm flex flex-col gap-4">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <!-- Game Mode Selector -->
+          <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-xl text-xs sm:text-sm font-semibold">
+            <button id="modeSameBtn" class="px-3 py-1.5 rounded-lg transition bg-white text-indigo-700 shadow-sm">
+              同題對戰 / 單人
+            </button>
+            <button id="modeCustomBtn" class="px-3 py-1.5 rounded-lg transition text-slate-600 hover:text-slate-900">
+              雙人互出題目
+            </button>
+          </div>
+
+          <!-- Digit Length Selector -->
+          <div class="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl text-xs sm:text-sm font-semibold">
+            <span class="text-xs text-slate-400 pl-2">位數:</span>
+            <button id="digit3Btn" class="px-3 py-1.5 rounded-lg transition text-slate-600 hover:text-slate-900">
+              3 位數
+            </button>
+            <button id="digit4Btn" class="px-3 py-1.5 rounded-lg transition bg-white text-indigo-700 shadow-sm">
+              4 位數
+            </button>
+          </div>
+        </div>
+
+        <!-- Player Count Selection (Only visible in Same-Secret Mode) -->
+        <div id="playerCountWrapper" class="flex items-center justify-between border-t border-slate-100 pt-3 text-xs sm:text-sm">
+          <span class="text-slate-500 font-medium">玩家人數：</span>
+          <div class="flex gap-2">
+            <button id="p1SelectBtn" class="px-3 py-1 rounded-lg font-bold border transition bg-indigo-50 border-indigo-200 text-indigo-700">1 人模式</button>
+            <button id="p2SelectBtn" class="px-3 py-1 rounded-lg font-bold border transition bg-white border-slate-200 text-slate-600 hover:bg-slate-50">2 人輪流</button>
+          </div>
+        </div>
+
+        <!-- Current Status Banner -->
+        <div class="bg-gradient-to-r from-slate-50 to-indigo-50/40 rounded-xl p-3.5 border border-indigo-100/60 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div id="playerIndicator" class="px-3 py-1 rounded-full text-xs font-bold bg-indigo-600 text-white flex items-center gap-1.5 shadow-sm">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span id="playerIndicatorText">玩家 1 回合</span>
+            </div>
+            <span id="gamePromptText" class="text-xs sm:text-sm font-medium text-slate-600">請輸入猜測數字</span>
+          </div>
+
+          <button id="revealAnswerBtn" class="text-xs font-medium text-slate-500 hover:text-rose-600 hover:underline px-2 py-1 transition">
+            顯示答案
+          </button>
+        </div>
+      </div>
+
+      <!-- Elimination / Candidate Number Trackers (0-9) -->
+      <div class="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-sm">
+        <div class="flex items-center justify-between mb-2.5">
+          <span class="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+            <svg class="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
+            數字排除盤（點擊切換：普通 / 排除 / 確定）
+          </span>
+          <button id="resetEliminationBtn" class="text-xs text-indigo-600 hover:text-indigo-800 font-medium">重設盤面</button>
+        </div>
+        <div class="grid grid-cols-10 gap-1 sm:gap-2" id="eliminationPad">
+          <!-- 0 to 9 buttons generated via JS -->
+        </div>
+      </div>
+
+      <!-- Guess Input Card -->
+      <div class="bg-white rounded-2xl p-5 border border-slate-200/90 shadow-sm flex flex-col gap-3">
+        <form id="guessForm" class="flex flex-col sm:flex-row gap-3">
+          <div class="relative flex-1">
+            <input 
+              type="text" 
+              inputmode="numeric" 
+              id="guessInput" 
+              maxlength="4" 
+              placeholder="輸入 4 位數字 (允許重複，例如 0113)" 
+              class="w-full tracking-[0.25em] text-center sm:text-left text-xl font-bold px-4 py-3 rounded-xl border-2 border-slate-200 focus:outline-none focus:border-indigo-600 bg-slate-50/50 transition" 
+              autocomplete="off"
+            >
+            <div id="inputHint" class="absolute right-3.5 top-3.5 text-xs text-slate-400 font-medium pointer-events-none hidden sm:block">
+              按 Enter 送出
+            </div>
+          </div>
+          <button 
+            type="submit" 
+            id="submitGuessBtn"
+            class="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] text-white font-bold rounded-xl shadow-md shadow-indigo-200 transition text-sm flex items-center justify-center gap-2"
+          >
+            <span>送出猜測</span>
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+          </button>
+        </form>
+        <div id="errorTip" class="text-xs font-semibold text-rose-500 h-4 transition-all"></div>
+      </div>
+
+      <!-- History Log Area (Single or Split for 2P) -->
+      <div class="bg-white rounded-2xl p-5 border border-slate-200/90 shadow-sm flex-1 flex flex-col min-h-[300px]">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
+          <div class="flex items-center gap-2">
+            <span class="font-bold text-sm text-slate-800">猜測紀錄</span>
+            <span id="roundCounterBadge" class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-semibold">第 1 輪</span>
+          </div>
+          <span class="text-xs text-slate-400">最新猜測置於頂部</span>
+        </div>
+
+        <!-- History Display Area -->
+        <div id="historySingleView" class="space-y-2 overflow-y-auto max-h-[360px] custom-scroll flex-1 pr-1">
+          <!-- Filled dynamically -->
+          <div class="text-center text-slate-400 py-12 text-sm">尚未有猜測紀錄，請在上方輸入數字！</div>
+        </div>
+
+        <div id="historyDuelView" class="hidden grid-cols-1 sm:grid-cols-2 gap-4 flex-1">
+          <!-- P1 Column -->
+          <div class="flex flex-col border border-slate-100 rounded-xl p-3 bg-slate-50/50">
+            <div class="flex justify-between items-center pb-2 mb-2 border-b border-slate-200/70">
+              <span class="font-bold text-xs text-indigo-700">Player 1 猜測紀錄</span>
+              <span id="p1Tries" class="text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-md font-bold">0 次</span>
+            </div>
+            <div id="p1HistoryList" class="space-y-1.5 overflow-y-auto max-h-[280px] custom-scroll flex-1 text-xs"></div>
+          </div>
+          <!-- P2 Column -->
+          <div class="flex flex-col border border-slate-100 rounded-xl p-3 bg-slate-50/50">
+            <div class="flex justify-between items-center pb-2 mb-2 border-b border-slate-200/70">
+              <span class="font-bold text-xs text-amber-700">Player 2 猜測紀錄</span>
+              <span id="p2Tries" class="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-md font-bold">0 次</span>
+            </div>
+            <div id="p2HistoryList" class="space-y-1.5 overflow-y-auto max-h-[280px] custom-scroll flex-1 text-xs"></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Right Column: Interactive Canvas Scratchpad (5 cols on lg) -->
+    <div class="lg:col-span-5 flex flex-col gap-4">
+      <div class="bg-white rounded-2xl p-5 border border-slate-200/90 shadow-sm flex flex-col h-full min-h-[460px]">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
+          <div class="flex items-center gap-2">
+            <div class="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+            </div>
+            <div>
+              <h2 class="font-bold text-sm text-slate-800 leading-tight">手寫思考草稿板</h2>
+              <p class="text-[11px] text-slate-400">可用滑鼠或手指在此塗鴉計算與推敲</p>
+            </div>
+          </div>
+
+          <!-- Canvas Tools -->
+          <div class="flex items-center gap-1.5">
+            <button id="penToolBtn" class="p-1.5 rounded-lg border transition bg-indigo-50 border-indigo-200 text-indigo-700" title="鉛筆">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+            </button>
+            <button id="eraserToolBtn" class="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition" title="橡皮擦">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+            </button>
+            <button id="clearCanvasBtn" class="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-rose-50 hover:text-rose-600 text-slate-600 transition" title="清空全部">
+              清空
+            </button>
+          </div>
+        </div>
+
+        <!-- Canvas Container -->
+        <div class="relative flex-1 w-full bg-slate-50/70 border border-slate-200 rounded-xl overflow-hidden min-h-[340px]">
+          <canvas id="scratchCanvas" class="w-full h-full canvas-touch cursor-crosshair"></canvas>
+          <div id="canvasEmptyPlaceholder" class="absolute inset-0 flex items-center justify-center pointer-events-none text-slate-300 text-xs font-medium">
+            自由推演區域 (手寫/筆記)
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between pt-3 text-[11px] text-slate-400">
+          <span>支援觸控與滑鼠操作</span>
+          <span class="italic">切換回合或重開時保留草稿</span>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Turn Handover Modal (Critical for 2P and Setting Secrets) -->
+  <div id="handoverModal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl border border-slate-100 text-center transform transition-all scale-100 flex flex-col items-center relative">
+      <!-- Cancel / Close button for setup and accidental clicks -->
+      <button id="cancelSetupBtn" type="button" class="absolute top-4 right-4 text-slate-400 hover:text-slate-700 p-1.5 rounded-full hover:bg-slate-100 transition" title="取消並返回上一頁">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+      </button>
+
+      <div id="handoverIconWrapper" class="w-16 h-16 rounded-2xl bg-indigo-100 text-indigo-600 flex items-center justify-center mb-4">
+        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+      </div>
+
+      <h3 id="handoverTitle" class="text-xl sm:text-2xl font-black text-slate-900 mb-2">請將裝置交給 Player 1</h3>
+      <p id="handoverSubtitle" class="text-sm text-slate-500 mb-6 leading-relaxed">輪到你的回合囉！其他人請轉頭不要看螢幕。</p>
+
+      <!-- Secret Input Container (For Custom Secret Mode Setup) -->
+      <div id="customSecretInputContainer" class="w-full mb-5 hidden">
+        <label id="secretInputLabel" class="block text-xs font-bold text-slate-700 mb-2 text-left">
+          請設定給對手猜的謎底（可重複數字，密碼隱藏）：
+        </label>
+        <div class="relative">
+          <input 
+            type="password" 
+            id="modalSecretInput" 
+            maxlength="4" 
+            placeholder="例如 0882" 
+            class="w-full tracking-[0.5em] text-center text-2xl font-bold px-4 py-3 rounded-xl border-2 border-indigo-200 focus:outline-none focus:border-indigo-600 bg-indigo-50/30"
+          >
+          <button type="button" id="toggleSecretEye" class="absolute right-3 top-3.5 text-slate-400 hover:text-slate-600 p-1">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+          </button>
+        </div>
+        <p id="modalInputError" class="text-xs font-bold text-rose-500 mt-2 h-4 text-left"></p>
+      </div>
+
+      <div class="flex flex-col gap-2 w-full">
+        <button id="handoverActionBtn" class="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] text-white font-bold rounded-xl shadow-lg shadow-indigo-200 transition text-sm">
+          我是 Player 1，我準備好了！
+        </button>
+        <button id="backToHomeBtn" type="button" class="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold rounded-xl transition text-xs flex items-center justify-center gap-1.5 hidden">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+          取消並返回主畫面
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Game Win Modal -->
+  <div id="winModal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl p-6 sm:p-8 max-w-sm w-full shadow-2xl border border-slate-100 text-center flex flex-col items-center animate-bounce-short">
+      <div class="w-20 h-20 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mb-4 text-4xl shadow-inner">
+        🎉
+      </div>
+      <h3 id="winTitle" class="text-2xl font-black text-slate-900 mb-1">恭喜破解密碼！</h3>
+      <p id="winSubtitle" class="text-sm text-slate-500 mb-4">Player 1 猜出了最終謎底！</p>
+      
+      <div class="bg-slate-50 border border-slate-200 rounded-2xl p-4 w-full mb-5">
+        <div class="text-xs text-slate-400 mb-1">正確答案</div>
+        <div id="winSecretCode" class="text-3xl font-black text-indigo-600 tracking-[0.25em]">0000</div>
+        <div id="winRoundsStats" class="text-xs text-slate-500 mt-2 font-medium">總共花費了 6 次猜測</div>
+      </div>
+
+      <div class="flex flex-col gap-2 w-full">
+        <div class="flex gap-2 w-full">
+          <button id="winReviewBtn" class="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-xl transition text-xs sm:text-sm">
+            查看本局複盤
+          </button>
+          <button id="winPlayAgainBtn" class="flex-1 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md shadow-indigo-200 transition text-xs sm:text-sm">
+            再來一局
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- History & Review Modal / Drawer -->
+  <div id="historyModal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-3 sm:p-6">
+    <div class="bg-white rounded-3xl max-w-3xl w-full shadow-2xl border border-slate-100 flex flex-col max-h-[92vh] overflow-hidden">
+      <!-- History Header -->
+      <div class="p-4 sm:p-6 border-b border-slate-100 flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+          </div>
+          <div>
+            <h3 class="text-base sm:text-lg font-bold text-slate-900">歷史紀錄與對局複盤</h3>
+            <p class="text-xs text-slate-400">已自動儲存至瀏覽器，隨時檢討每一步猜測歷程</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="clearAllHistoryBtn" class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100 transition">
+            清空紀錄
+          </button>
+          <button id="closeHistoryModalBtn" class="text-slate-400 hover:text-slate-600 p-1 text-2xl font-bold leading-none">&times;</button>
+        </div>
+      </div>
+
+      <!-- History Content Area (List or Detail Review) -->
+      <div class="p-4 sm:p-6 overflow-y-auto custom-scroll flex-1">
+        <div id="historyListContainer" class="space-y-3">
+          <!-- Filled dynamically -->
+        </div>
+
+        <!-- Detail Review Container (hidden by default) -->
+        <div id="historyDetailContainer" class="hidden flex flex-col gap-4">
+          <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+            <button id="backToHistoryListBtn" class="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-600 hover:text-indigo-800">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+              返回對局列表
+            </button>
+            <span id="detailMatchTime" class="text-xs text-slate-400 font-mono"></span>
+          </div>
+
+          <div id="detailMatchSummary" class="bg-indigo-50/50 border border-indigo-100 rounded-2xl p-4 grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+            <!-- Dynamic stats -->
+          </div>
+
+          <div>
+            <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">每一步猜測過程 (由第一步到破譯)</h4>
+            <div id="detailStepsList" class="space-y-2">
+              <!-- Dynamic review steps -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Rules & Duplication Explanation Modal -->
+  <div id="ruleModal" class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl p-6 sm:p-7 max-w-lg w-full shadow-2xl border border-slate-100 flex flex-col max-h-[90vh]">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+        <h3 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+          <span class="w-6 h-6 rounded-md bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-bold">i</span>
+          1A2B 遊戲規則與重複扣抵判定
+        </h3>
+        <button id="closeRuleModalBtn" class="text-slate-400 hover:text-slate-600 p-1 text-lg leading-none font-bold">&times;</button>
+      </div>
+
+      <div class="overflow-y-auto space-y-4 text-xs sm:text-sm text-slate-600 leading-relaxed pr-1 custom-scroll">
+        <div class="bg-indigo-50/60 border border-indigo-100 p-3.5 rounded-xl">
+          <p class="font-bold text-indigo-900 mb-1">基本定義：</p>
+          <ul class="list-disc pl-4 space-y-1">
+            <li><strong class="text-indigo-700">A (位置正確)</strong>：數字猜對，且位置完全相同。</li>
+            <li><strong class="text-amber-700">B (存在但位置不同)</strong>：數字猜對，但位置在其他地方。</li>
+            <li>數字允許從 <code class="bg-indigo-100 px-1 py-0.5 rounded text-indigo-800">0</code> 開始（例如 <code class="bg-slate-100 px-1 rounded">0123</code>）。</li>
+            <li>可切換 3 位數 或 4 位數模式。</li>
+          </ul>
+        </div>
+
+        <div class="bg-amber-50/80 border border-amber-200 p-3.5 rounded-xl">
+          <p class="font-bold text-amber-900 mb-1">🔥 重複數字配對扣抵原則（重要）：</p>
+          <p class="mb-2">每個位置的數字<strong>「只能配對計算一次」</strong>。先配對位置完全吻合的 A，剩餘未配對的數字才能配對成 B。</p>
+          <div class="bg-white/80 p-2.5 rounded-lg border border-amber-100 space-y-1.5 font-mono text-xs">
+            <div class="text-slate-700"><strong>範例一：</strong> 謎底為 <span class="text-indigo-600 font-bold">1123</span>，玩家猜 <span class="text-emerald-600 font-bold">1114</span></div>
+            <div class="text-slate-500 pl-2">前兩位數位置完全吻合得 <span class="font-bold text-indigo-600">2A</span>。第三位數雖然也是 1，但謎底只有兩個 1 且都已被 A 扣抵，因此最終結果為 <span class="font-bold text-rose-600">2A0B</span>（而非 2A1B）。</div>
+            <div class="text-slate-700 pt-1"><strong>範例二：</strong> 謎底為 <span class="text-indigo-600 font-bold">1123</span>，玩家猜 <span class="text-emerald-600 font-bold">0111</span></div>
+            <div class="text-slate-500 pl-2">第二位數字吻合得 <span class="font-bold text-indigo-600">1A</span>。猜測剩餘兩個 1 只能與謎底最後一個 1 配對得 <span class="font-bold text-amber-600">1B</span>。最終結果為 <span class="font-bold text-rose-600">1A1B</span>。</div>
+          </div>
+        </div>
+
+        <div class="bg-slate-50 border border-slate-200 p-3.5 rounded-xl">
+          <p class="font-bold text-slate-800 mb-1">遊戲模式說明：</p>
+          <ul class="list-disc pl-4 space-y-1">
+            <li><strong>同題模式</strong>：1人獨自挑戰或2人輪流猜同一題，最先猜出者獲勝。</li>
+            <li><strong>互出題目</strong>：2位玩家交替設定對手的秘密謎底，輪流猜測，看誰先解開對方的題目！</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="pt-4 border-t border-slate-100 mt-4 text-right">
+        <button id="closeRuleModalFooterBtn" class="px-5 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-semibold">
+          了解，開始遊玩
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="py-4 text-center text-xs text-slate-400 border-t border-slate-200 bg-white/50">
+    1A2B 數字益智遊戲 &bull; 簡約純淨單檔版
+  </footer>
+
+  <script>
+    /* ==========================================================================
+       Sound Synthesizer (Web Audio API - No external audio assets required)
+       ========================================================================== */
+    class SoundEngine {
+      constructor() {
+        this.ctx = null;
+      }
+      init() {
+        if (!this.ctx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          this.ctx = new AudioContext();
+        }
+        if (this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      }
+      playBuzzer() {
+        try {
+          this.init();
+          const now = this.ctx.currentTime;
+          // Dual saw-tooth buzzer sound ("ㄝㄝ")
+          const osc1 = this.ctx.createOscillator();
+          const osc2 = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+
+          osc1.type = 'sawtooth';
+          osc2.type = 'square';
+
+          // First buzz
+          osc1.frequency.setValueAtTime(140, now);
+          osc1.frequency.setValueAtTime(110, now + 0.1);
+          osc2.frequency.setValueAtTime(145, now);
+          osc2.frequency.setValueAtTime(115, now + 0.1);
+
+          gain.gain.setValueAtTime(0.2, now);
+          gain.gain.setValueAtTime(0.01, now + 0.12);
+          gain.gain.setValueAtTime(0.2, now + 0.14);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.32);
+
+          osc1.connect(gain);
+          osc2.connect(gain);
+          gain.connect(this.ctx.destination);
+
+          osc1.start(now);
+          osc2.start(now);
+          osc1.stop(now + 0.35);
+          osc2.stop(now + 0.35);
+        } catch (e) {
+          console.warn("Audio playback failed", e);
+        }
+      }
+      playCorrectPing() {
+        try {
+          this.init();
+          const now = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(587.33, now); // D5
+          osc.frequency.exponentialRampToValueAtTime(880, now + 0.15); // A5
+          gain.gain.setValueAtTime(0.15, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.25);
+        } catch (e) {}
+      }
+      playWinFanfare() {
+        try {
+          this.init();
+          const notes = [523.25, 659.25, 783.99, 1046.50]; // C E G C
+          notes.forEach((freq, index) => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            const start = this.ctx.currentTime + index * 0.12;
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(freq, start);
+            gain.gain.setValueAtTime(0.2, start);
+            gain.gain.exponentialRampToValueAtTime(0.001, start + 0.35);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(start);
+            osc.stop(start + 0.35);
+          });
+        } catch (e) {}
+      }
+    }
+
+    const sound = new SoundEngine();
+
+    /* ==========================================================================
+       Game Core Engine & Duplicate Logic
+       ========================================================================== */
+    const State = {
+      digitsCount: 4, // 3 or 4
+      gameMode: 'SAME', // 'SAME' or 'CUSTOM'
+      playerCount: 1, // 1 or 2 (only in SAME mode)
+      activePlayer: 1, // 1 or 2
+      secretCode: '', // For SAME mode
+      p1Secret: '', // In CUSTOM mode, secret for P2 to guess
+      p2Secret: '', // In CUSTOM mode, secret for P1 to guess
+      p1History: [],
+      p2History: [],
+      sharedHistory: [],
+      eliminationState: {}, // '0'-'9': 0=normal, 1=excluded (cross), 2=confirmed (green)
+      setupStep: 'NONE', // 'P1_SETTING' | 'P2_SETTING' | 'READY'
+      isGameOver: false,
+      gameStartTime: null,
+      lastFinishedGameId: null
+    };
+
+    const HISTORY_STORAGE_KEY = '1a2b_game_records_v1';
+
+    function getSavedHistory() {
+      try {
+        const raw = localStorage.getItem(HISTORY_STORAGE_KEY);
+        return raw ? JSON.parse(raw) : [];
+      } catch (e) {
+        return [];
+      }
+    }
+
+    function saveHistoryRecord(record) {
+      try {
+        const list = getSavedHistory();
+        list.unshift(record);
+        // keep max 50 records
+        if (list.length > 50) list.pop();
+        localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(list));
+      } catch (e) {
+        console.warn('Storage failed', e);
+      }
+    }
+
+    function clearSavedHistory() {
+      try {
+        localStorage.removeItem(HISTORY_STORAGE_KEY);
+      } catch (e) {}
+    }
+
+    /**
+     * Compute 1A2B with Duplicate Elements
+     * Exact matches consume elements first for A. Remaining elements are matched for B.
+     */
+    function calculate1A2B(secret, guess) {
+      let a = 0;
+      let b = 0;
+      const sArr = secret.split('');
+      const gArr = guess.split('');
+      const len = sArr.length;
+
+      const sMatched = new Array(len).fill(false);
+      const gMatched = new Array(len).fill(false);
+
+      // 1. Calculate A (Exact position match)
+      for (let i = 0; i < len; i++) {
+        if (sArr[i] === gArr[i]) {
+          a++;
+          sMatched[i] = true;
+          gMatched[i] = true;
+        }
+      }
+
+      // 2. Calculate B (Position differs, check remaining available items)
+      for (let i = 0; i < len; i++) {
+        if (!gMatched[i]) {
+          for (let j = 0; j < len; j++) {
+            if (!sMatched[j] && gArr[i] === sArr[j]) {
+              b++;
+              sMatched[j] = true;
+              break;
+            }
+          }
+        }
+      }
+
+      return { a, b };
+    }
+
+    function generateRandomSecret(length) {
+      let result = '';
+      for (let i = 0; i < length; i++) {
+        result += Math.floor(Math.random() * 10).toString();
+      }
+      return result;
+    }
+
+    /* ==========================================================================
+       UI Elements
+       ========================================================================== */
+    const guessForm = document.getElementById('guessForm');
+    const guessInput = document.getElementById('guessInput');
+    const errorTip = document.getElementById('errorTip');
+    const playerIndicator = document.getElementById('playerIndicator');
+    const playerIndicatorText = document.getElementById('playerIndicatorText');
+    const gamePromptText = document.getElementById('gamePromptText');
+    const roundCounterBadge = document.getElementById('roundCounterBadge');
+
+    const historySingleView = document.getElementById('historySingleView');
+    const historyDuelView = document.getElementById('historyDuelView');
+    const p1HistoryList = document.getElementById('p1HistoryList');
+    const p2HistoryList = document.getElementById('p2HistoryList');
+    const p1Tries = document.getElementById('p1Tries');
+    const p2Tries = document.getElementById('p2Tries');
+
+    const modeSameBtn = document.getElementById('modeSameBtn');
+    const modeCustomBtn = document.getElementById('modeCustomBtn');
+    const digit3Btn = document.getElementById('digit3Btn');
+    const digit4Btn = document.getElementById('digit4Btn');
+    const playerCountWrapper = document.getElementById('playerCountWrapper');
+    const p1SelectBtn = document.getElementById('p1SelectBtn');
+    const p2SelectBtn = document.getElementById('p2SelectBtn');
+    const revealAnswerBtn = document.getElementById('revealAnswerBtn');
+    const restartBtn = document.getElementById('restartBtn');
+
+    const handoverModal = document.getElementById('handoverModal');
+    const handoverTitle = document.getElementById('handoverTitle');
+    const handoverSubtitle = document.getElementById('handoverSubtitle');
+    const handoverActionBtn = document.getElementById('handoverActionBtn');
+    const customSecretInputContainer = document.getElementById('customSecretInputContainer');
+    const modalSecretInput = document.getElementById('modalSecretInput');
+    const modalInputError = document.getElementById('modalInputError');
+    const toggleSecretEye = document.getElementById('toggleSecretEye');
+    const cancelSetupBtn = document.getElementById('cancelSetupBtn');
+    const backToHomeBtn = document.getElementById('backToHomeBtn');
+
+    const winModal = document.getElementById('winModal');
+    const winTitle = document.getElementById('winTitle');
+    const winSubtitle = document.getElementById('winSubtitle');
+    const winSecretCode = document.getElementById('winSecretCode');
+    const winRoundsStats = document.getElementById('winRoundsStats');
+    const winPlayAgainBtn = document.getElementById('winPlayAgainBtn');
+    const winReviewBtn = document.getElementById('winReviewBtn');
+
+    const historyDrawerBtn = document.getElementById('historyDrawerBtn');
+    const historyModal = document.getElementById('historyModal');
+    const closeHistoryModalBtn = document.getElementById('closeHistoryModalBtn');
+    const clearAllHistoryBtn = document.getElementById('clearAllHistoryBtn');
+    const historyListContainer = document.getElementById('historyListContainer');
+    const historyDetailContainer = document.getElementById('historyDetailContainer');
+    const backToHistoryListBtn = document.getElementById('backToHistoryListBtn');
+    const detailMatchTime = document.getElementById('detailMatchTime');
+    const detailMatchSummary = document.getElementById('detailMatchSummary');
+    const detailStepsList = document.getElementById('detailStepsList');
+
+    const ruleModal = document.getElementById('ruleModal');
+    const ruleModalBtn = document.getElementById('ruleModalBtn');
+    const closeRuleModalBtn = document.getElementById('closeRuleModalBtn');
+    const closeRuleModalFooterBtn = document.getElementById('closeRuleModalFooterBtn');
+
+    const eliminationPad = document.getElementById('eliminationPad');
+    const resetEliminationBtn = document.getElementById('resetEliminationBtn');
+
+    /* ==========================================================================
+       Elimination Tracker Initialization
+       ========================================================================== */
+    function initEliminationPad() {
+      eliminationPad.innerHTML = '';
+      for (let i = 0; i <= 9; i++) {
+        const key = i.toString();
+        if (State.eliminationState[key] === undefined) {
+          State.eliminationState[key] = 0; // 0: Normal, 1: Excluded, 2: Confirmed
+        }
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.dataset.digit = key;
+        btn.className = getEliminationBtnClass(State.eliminationState[key]);
+        btn.innerHTML = `<span>${key}</span>`;
+        btn.addEventListener('click', () => toggleElimination(key));
+        eliminationPad.appendChild(btn);
+      }
+    }
+
+    function getEliminationBtnClass(state) {
+      const base = "h-10 sm:h-11 rounded-xl font-black text-sm sm:text-base flex items-center justify-center transition border ";
+      if (state === 0) {
+        return base + "bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100 hover:border-slate-300";
+      } else if (state === 1) {
+        // Excluded (red/line-through)
+        return base + "bg-rose-50 border-rose-200 text-rose-400 line-through opacity-70";
+      } else {
+        // Confirmed (emerald)
+        return base + "bg-emerald-500 border-emerald-600 text-white shadow-sm ring-2 ring-emerald-200";
+      }
+    }
+
+    function toggleElimination(digit) {
+      State.eliminationState[digit] = (State.eliminationState[digit] + 1) % 3;
+      initEliminationPad();
+    }
+
+    resetEliminationBtn.addEventListener('click', () => {
+      for (let i = 0; i <= 9; i++) {
+        State.eliminationState[i.toString()] = 0;
+      }
+      initEliminationPad();
+    });
+
+    /* ==========================================================================
+       Game Initialization & Reset
+       ========================================================================== */
+    function startNewGame() {
+      State.isGameOver = false;
+      State.p1History = [];
+      State.p2History = [];
+      State.sharedHistory = [];
+      State.activePlayer = 1;
+      State.gameStartTime = new Date();
+      errorTip.textContent = '';
+      guessInput.value = '';
+      guessInput.maxLength = State.digitsCount;
+      guessInput.placeholder = `輸入 ${State.digitsCount} 位數字 (允許重複)`;
+
+      for (let i = 0; i <= 9; i++) State.eliminationState[i.toString()] = 0;
+      initEliminationPad();
+
+      if (State.gameMode === 'SAME') {
+        State.secretCode = generateRandomSecret(State.digitsCount);
+        State.p1Secret = '';
+        State.p2Secret = '';
+        State.setupStep = 'READY';
+        handoverModal.classList.add('hidden');
+        renderHistory();
+        updateStatusDisplay();
+        setTimeout(() => guessInput.focus(), 100);
+      } else {
+        // CUSTOM Mode: 2 Players mutually set secrets
+        State.setupStep = 'P1_SETTING';
+        showHandoverForCustomSetup(1);
+      }
+    }
+
+    function cancelCustomSetupAndFallback() {
+      // Revert back to same-secret mode safely
+      State.gameMode = 'SAME';
+      State.setupStep = 'READY';
+      modeSameBtn.className = "px-3 py-1.5 rounded-lg transition bg-white text-indigo-700 shadow-sm";
+      modeCustomBtn.className = "px-3 py-1.5 rounded-lg transition text-slate-600 hover:text-slate-900";
+      playerCountWrapper.classList.remove('hidden');
+      handoverModal.classList.add('hidden');
+      customSecretInputContainer.classList.add('hidden');
+      backToHomeBtn.classList.add('hidden');
+      startNewGame();
+    }
+
+    cancelSetupBtn.addEventListener('click', () => {
+      if (State.setupStep === 'P1_SETTING' || State.setupStep === 'P2_SETTING') {
+        cancelCustomSetupAndFallback();
+      } else {
+        handoverModal.classList.add('hidden');
+      }
+    });
+
+    backToHomeBtn.addEventListener('click', () => {
+      cancelCustomSetupAndFallback();
+    });
+
+    function showHandoverForCustomSetup(playerSetting) {
+      handoverModal.classList.remove('hidden');
+      customSecretInputContainer.classList.remove('hidden');
+      backToHomeBtn.classList.remove('hidden');
+      modalSecretInput.value = '';
+      modalSecretInput.maxLength = State.digitsCount;
+      modalSecretInput.type = 'password';
+      modalInputError.textContent = '';
+
+      if (playerSetting === 1) {
+        handoverTitle.textContent = "請將裝置交給 Player 1";
+        handoverSubtitle.textContent = "請 Player 1 設定要讓 Player 2 猜測的謎底密碼（可重複數字，輸入時會遮蔽）。";
+        document.getElementById('secretInputLabel').textContent = `Player 1 請設定 ${State.digitsCount} 位密碼：`;
+        handoverActionBtn.textContent = "鎖定並換 Player 2 設定";
+      } else {
+        handoverTitle.textContent = "請將裝置交給 Player 2";
+        handoverSubtitle.textContent = "請 Player 2 設定要讓 Player 1 猜測的謎底密碼（P1 請不要偷看！）。";
+        document.getElementById('secretInputLabel').textContent = `Player 2 請設定 ${State.digitsCount} 位密碼：`;
+        handoverActionBtn.textContent = "完成設定，開始決鬥！";
+      }
+      setTimeout(() => modalSecretInput.focus(), 150);
+    }
+
+    function showTurnHandoverModal(nextPlayer) {
+      handoverModal.classList.remove('hidden');
+      customSecretInputContainer.classList.add('hidden');
+      backToHomeBtn.classList.add('hidden');
+      handoverTitle.textContent = `請將裝置交給 Player ${nextPlayer}`;
+      handoverSubtitle.textContent = `輪到 Player ${nextPlayer} 進行猜測推理。其他人請轉頭不要看螢幕紀錄！`;
+      handoverActionBtn.textContent = `我是 Player ${nextPlayer}，開始這回合！`;
+    }
+
+    handoverActionBtn.addEventListener('click', () => {
+      sound.init();
+      if (State.setupStep === 'P1_SETTING') {
+        const val = modalSecretInput.value.trim();
+        if (!validateInputFormat(val)) {
+          showModalError(`請輸入完整的 ${State.digitsCount} 位純數字！`);
+          sound.playBuzzer();
+          return;
+        }
+        State.p1Secret = val; // P1 sets secret for P2
+        State.setupStep = 'P2_SETTING';
+        showHandoverForCustomSetup(2);
+      } else if (State.setupStep === 'P2_SETTING') {
+        const val = modalSecretInput.value.trim();
+        if (!validateInputFormat(val)) {
+          showModalError(`請輸入完整的 ${State.digitsCount} 位純數字！`);
+          sound.playBuzzer();
+          return;
+        }
+        State.p2Secret = val; // P2 sets secret for P1
+        State.setupStep = 'READY';
+        handoverModal.classList.add('hidden');
+        backToHomeBtn.classList.add('hidden');
+        State.activePlayer = 1;
+        renderHistory();
+        updateStatusDisplay();
+        setTimeout(() => guessInput.focus(), 100);
+      } else {
+        // Regular turn handover
+        handoverModal.classList.add('hidden');
+        renderHistory();
+        updateStatusDisplay();
+        setTimeout(() => guessInput.focus(), 100);
+      }
+    });
+
+    toggleSecretEye.addEventListener('click', () => {
+      modalSecretInput.type = modalSecretInput.type === 'password' ? 'text' : 'password';
+    });
+
+    function showModalError(msg) {
+      modalInputError.textContent = msg;
+      modalSecretInput.classList.add('shake-error');
+      setTimeout(() => modalSecretInput.classList.remove('shake-error'), 400);
+    }
+
+    /* ==========================================================================
+       Input Validation & Guess Handling
+       ========================================================================== */
+    function validateInputFormat(str) {
+      const regex = new RegExp(`^\\d{${State.digitsCount}}$`);
+      return regex.test(str);
+    }
+
+    guessForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (State.isGameOver) return;
+
+      const guess = guessInput.value.trim();
+
+      // Validation
+      if (!validateInputFormat(guess)) {
+        triggerInputError(`請輸入正確的 ${State.digitsCount} 位純數字 (0-9)！`);
+        return;
+      }
+
+      errorTip.textContent = '';
+      executeGuess(guess);
+    });
+
+    function triggerInputError(message) {
+      sound.playBuzzer();
+      errorTip.textContent = message;
+      guessInput.classList.add('shake-error');
+      setTimeout(() => {
+        guessInput.classList.remove('shake-error');
+      }, 400);
+      guessInput.focus();
+    }
+
+    function executeGuess(guess) {
+      let targetSecret = '';
+
+      if (State.gameMode === 'SAME') {
+        targetSecret = State.secretCode;
+      } else {
+        // In CUSTOM mode: P1 guesses P2's secret; P2 guesses P1's secret
+        targetSecret = State.activePlayer === 1 ? State.p2Secret : State.p1Secret;
+      }
+
+      const result = calculate1A2B(targetSecret, guess);
+      const isWin = result.a === State.digitsCount;
+
+      const guessRecord = {
+        player: State.activePlayer,
+        guess,
+        a: result.a,
+        b: result.b,
+        round: getCurrentRoundNumber(),
+        time: new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+      };
+
+      if (State.gameMode === 'SAME') {
+        State.sharedHistory.unshift(guessRecord);
+        if (State.playerCount === 2) {
+          if (State.activePlayer === 1) State.p1History.unshift(guessRecord);
+          else State.p2History.unshift(guessRecord);
+        }
+      } else {
+        if (State.activePlayer === 1) State.p1History.unshift(guessRecord);
+        else State.p2History.unshift(guessRecord);
+      }
+
+      guessInput.value = '';
+
+      if (isWin) {
+        sound.playWinFanfare();
+        handleWin(targetSecret);
+      } else {
+        sound.playCorrectPing();
+        // Turn progression
+        if (State.gameMode === 'CUSTOM') {
+          const nextPlayer = State.activePlayer === 1 ? 2 : 1;
+          State.activePlayer = nextPlayer;
+          renderHistory();
+          showTurnHandoverModal(nextPlayer);
+        } else if (State.gameMode === 'SAME' && State.playerCount === 2) {
+          State.activePlayer = State.activePlayer === 1 ? 2 : 1;
+          renderHistory();
+          updateStatusDisplay();
+        } else {
+          renderHistory();
+          updateStatusDisplay();
+        }
+      }
+    }
+
+    function getCurrentRoundNumber() {
+      if (State.gameMode === 'CUSTOM') {
+        return State.activePlayer === 1 ? State.p1History.length + 1 : State.p2History.length + 1;
+      }
+      return State.sharedHistory.length + 1;
+    }
+
+    function handleWin(secret) {
+      State.isGameOver = true;
+      winSecretCode.textContent = secret;
+      renderHistory();
+
+      const gameId = 'game_' + Date.now();
+      State.lastFinishedGameId = gameId;
+
+      let modeName = '';
+      let winnerText = '';
+      let totalRounds = 0;
+      let recordedSteps = [];
+
+      if (State.gameMode === 'SAME') {
+        if (State.playerCount === 1) {
+          modeName = '單人模式';
+          winnerText = '玩家自己';
+          totalRounds = State.sharedHistory.length;
+          winTitle.textContent = "恭喜完成挑戰！";
+          winSubtitle.textContent = "你成功破解了數字密碼！";
+          winRoundsStats.textContent = `共花費了 ${totalRounds} 次猜測`;
+          recordedSteps = [...State.sharedHistory].reverse();
+        } else {
+          modeName = '雙人同題競速';
+          winnerText = `Player ${State.activePlayer}`;
+          totalRounds = State.sharedHistory.length;
+          winTitle.textContent = `🎉 玩家 ${State.activePlayer} 獲勝！`;
+          winSubtitle.textContent = `Player ${State.activePlayer} 率先破解共同謎底！`;
+          winRoundsStats.textContent = `雙方共進行了 ${totalRounds} 回合的精彩較量`;
+          recordedSteps = [...State.sharedHistory].reverse();
+        }
+      } else {
+        modeName = '雙人互出題目';
+        winnerText = `Player ${State.activePlayer}`;
+        const myTries = State.activePlayer === 1 ? State.p1History.length : State.p2History.length;
+        totalRounds = myTries;
+        winTitle.textContent = `🎉 玩家 ${State.activePlayer} 獲勝！`;
+        winSubtitle.textContent = `Player ${State.activePlayer} 成功解開了對手出的謎底！`;
+        winRoundsStats.textContent = `花費 ${myTries} 次猜測破譯對手的防線`;
+
+        // Interleave steps or collect all chronologically
+        recordedSteps = [
+          ...State.p1History.map(item => ({ ...item, playerTag: 'P1' })),
+          ...State.p2History.map(item => ({ ...item, playerTag: 'P2' }))
+        ].sort((a, b) => a.round - b.round);
+      }
+
+      // Persist to localStorage
+      const matchRecord = {
+        id: gameId,
+        date: new Date().toLocaleString('zh-TW', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
+        digits: State.digitsCount,
+        mode: modeName,
+        winner: winnerText,
+        rounds: totalRounds,
+        secret: secret,
+        p1Secret: State.p1Secret || null,
+        p2Secret: State.p2Secret || null,
+        steps: recordedSteps
+      };
+
+      saveHistoryRecord(matchRecord);
+      winModal.classList.remove('hidden');
+    }
+
+    /* ==========================================================================
+       History & Review Drawer Logic
+       ========================================================================== */
+    function openHistoryModal(focusGameId = null) {
+      renderHistoryList();
+      historyModal.classList.remove('hidden');
+      if (focusGameId) {
+        showMatchReview(focusGameId);
+      } else {
+        showHistoryOverview();
+      }
+    }
+
+    function showHistoryOverview() {
+      historyListContainer.classList.remove('hidden');
+      historyDetailContainer.classList.add('hidden');
+    }
+
+    function renderHistoryList() {
+      const records = getSavedHistory();
+      if (!records || records.length === 0) {
+        historyListContainer.innerHTML = `
+          <div class="text-center py-12 text-slate-400 text-sm flex flex-col items-center gap-2">
+            <svg class="w-10 h-10 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            尚無任何歷史對局紀錄，快去開局玩一把吧！
+          </div>
+        `;
+        return;
+      }
+
+      historyListContainer.innerHTML = records.map((rec) => {
+        return `
+          <div class="bg-white hover:bg-slate-50 border border-slate-200/90 rounded-2xl p-4 transition shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div class="space-y-1">
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-bold px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-100">${rec.mode}</span>
+                <span class="text-xs font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-700">${rec.digits} 位數</span>
+                <span class="text-xs text-slate-400">${rec.date}</span>
+              </div>
+              <div class="text-sm font-semibold text-slate-800">
+                勝者：<span class="text-indigo-600 font-bold">${rec.winner}</span> &bull; 耗費 <span class="font-bold">${rec.rounds}</span> 輪
+              </div>
+              <div class="text-xs text-slate-500 font-mono">
+                謎底答案：<span class="font-bold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded">${rec.secret}</span>
+                ${rec.p1Secret && rec.p2Secret ? `<span class="text-slate-400 ml-1">(P1出的: ${rec.p1Secret} / P2出的: ${rec.p2Secret})</span>` : ''}
+              </div>
+            </div>
+            <button onclick="window.viewMatchDetail('${rec.id}')" class="px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-100 hover:bg-indigo-600 hover:text-white text-slate-700 transition">
+              詳細複盤 &rarr;
+            </button>
+          </div>
+        `;
+      }).join('');
+    }
+
+    window.viewMatchDetail = function(matchId) {
+      showMatchReview(matchId);
+    };
+
+    function showMatchReview(matchId) {
+      const records = getSavedHistory();
+      const match = records.find(r => r.id === matchId);
+      if (!match) return;
+
+      historyListContainer.classList.add('hidden');
+      historyDetailContainer.classList.remove('hidden');
+
+      detailMatchTime.textContent = match.date;
+      detailMatchSummary.innerHTML = `
+        <div class="p-2">
+          <div class="text-[11px] text-slate-400">遊玩模式</div>
+          <div class="text-xs sm:text-sm font-bold text-slate-800">${match.mode} (${match.digits}位)</div>
+        </div>
+        <div class="p-2">
+          <div class="text-[11px] text-slate-400">獲勝者</div>
+          <div class="text-xs sm:text-sm font-bold text-indigo-600">${match.winner}</div>
+        </div>
+        <div class="p-2">
+          <div class="text-[11px] text-slate-400">總猜測輪次</div>
+          <div class="text-xs sm:text-sm font-bold text-slate-800">${match.rounds} 次</div>
+        </div>
+        <div class="p-2">
+          <div class="text-[11px] text-slate-400">最終謎底</div>
+          <div class="text-xs sm:text-sm font-mono font-bold text-emerald-600">${match.secret}</div>
+        </div>
+      `;
+
+      if (!match.steps || match.steps.length === 0) {
+        detailStepsList.innerHTML = '<div class="text-slate-400 text-xs py-4 text-center">無步數紀錄</div>';
+      } else {
+        detailStepsList.innerHTML = match.steps.map((step, idx) => {
+          const isWinStep = step.a === match.digits;
+          const pTag = step.player ? `P${step.player}` : (step.playerTag || '');
+          return `
+            <div class="flex items-center justify-between p-3 rounded-xl border ${isWinStep ? 'bg-emerald-50 border-emerald-200' : 'bg-white border-slate-200'} text-xs sm:text-sm">
+              <div class="flex items-center gap-3">
+                <span class="font-mono text-slate-400 text-xs w-6">#${idx + 1}</span>
+                ${pTag ? `<span class="px-2 py-0.5 rounded text-[10px] font-bold ${pTag === 'P1' ? 'bg-indigo-100 text-indigo-700' : 'bg-amber-100 text-amber-700'}">${pTag}</span>` : ''}
+                <span class="font-mono font-bold tracking-widest text-slate-900 text-base">${step.guess}</span>
+                ${step.time ? `<span class="text-[11px] text-slate-400 hidden sm:inline">${step.time}</span>` : ''}
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="px-2.5 py-1 rounded-lg font-bold text-xs bg-indigo-50 text-indigo-700 border border-indigo-100">${step.a} A</span>
+                <span class="px-2.5 py-1 rounded-lg font-bold text-xs bg-amber-50 text-amber-700 border border-amber-100">${step.b} B</span>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+    }
+
+    backToHistoryListBtn.addEventListener('click', () => {
+      showHistoryOverview();
+    });
+
+    historyDrawerBtn.addEventListener('click', () => {
+      openHistoryModal();
+    });
+
+    closeHistoryModalBtn.addEventListener('click', () => {
+      historyModal.classList.add('hidden');
+    });
+
+    clearAllHistoryBtn.addEventListener('click', () => {
+      clearSavedHistory();
+      renderHistoryList();
+      showHistoryOverview();
+    });
+
+    winReviewBtn.addEventListener('click', () => {
+      winModal.classList.add('hidden');
+      if (State.lastFinishedGameId) {
+        openHistoryModal(State.lastFinishedGameId);
+      } else {
+        openHistoryModal();
+      }
+    });
+
+    /* ==========================================================================
+       Render History Lists
+       ========================================================================== */
+    function renderHistory() {
+      if (State.gameMode === 'CUSTOM') {
+        historySingleView.classList.add('hidden');
+        historyDuelView.classList.remove('hidden');
+        historyDuelView.classList.add('grid');
+
+        p1Tries.textContent = `${State.p1History.length} 次`;
+        p2Tries.textContent = `${State.p2History.length} 次`;
+
+        p1HistoryList.innerHTML = renderHistoryItems(State.p1History);
+        p2HistoryList.innerHTML = renderHistoryItems(State.p2History);
+      } else {
+        historySingleView.classList.remove('hidden');
+        historyDuelView.classList.add('hidden');
+        historyDuelView.classList.remove('grid');
+
+        if (State.sharedHistory.length === 0) {
+          historySingleView.innerHTML = `
+            <div class="text-center text-slate-400 py-12 text-sm flex flex-col items-center gap-2">
+              <svg class="w-8 h-8 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
+              尚未有猜測紀錄，請在上方輸入數字！
+            </div>`;
+        } else {
+          historySingleView.innerHTML = renderHistoryItems(State.sharedHistory, true);
+        }
+      }
+    }
+
+    function renderHistoryItems(list, showPlayerTag = false) {
+      if (!list || list.length === 0) {
+        return '<div class="text-center text-slate-400 py-6 text-xs">尚無猜測紀錄</div>';
+      }
+      return list.map((item, idx) => {
+        const orderNum = list.length - idx;
+        const playerBadge = showPlayerTag && (State.playerCount === 2) 
+          ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold ${item.player === 1 ? 'bg-indigo-100 text-indigo-700' : 'bg-amber-100 text-amber-700'}">P${item.player}</span>` 
+          : '';
+
+        const isFullA = item.a === State.digitsCount;
+        return `
+          <div class="flex items-center justify-between p-2.5 rounded-xl border ${isFullA ? 'bg-emerald-50 border-emerald-300' : 'bg-white border-slate-200/80'} shadow-sm text-sm">
+            <div class="flex items-center gap-2">
+              <span class="text-xs text-slate-400 font-mono w-5">#${orderNum}</span>
+              ${playerBadge}
+              <span class="font-mono font-bold tracking-widest text-slate-800 text-base">${item.guess}</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="px-2 py-0.5 rounded-md font-extrabold text-xs bg-indigo-50 text-indigo-700 border border-indigo-100">
+                ${item.a} A
+              </span>
+              <span class="px-2 py-0.5 rounded-md font-extrabold text-xs bg-amber-50 text-amber-700 border border-amber-100">
+                ${item.b} B
+              </span>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function updateStatusDisplay() {
+      roundCounterBadge.textContent = `第 ${getCurrentRoundNumber()} 輪`;
+
+      if (State.gameMode === 'SAME') {
+        if (State.playerCount === 1) {
+          playerIndicator.className = "px-3 py-1 rounded-full text-xs font-bold bg-indigo-600 text-white flex items-center gap-1.5 shadow-sm";
+          playerIndicatorText.textContent = "單人模式";
+          gamePromptText.textContent = "請推論謎底數字";
+        } else {
+          if (State.activePlayer === 1) {
+            playerIndicator.className = "px-3 py-1 rounded-full text-xs font-bold bg-indigo-600 text-white flex items-center gap-1.5 shadow-sm";
+            playerIndicatorText.textContent = "玩家 1 回合";
+          } else {
+            playerIndicator.className = "px-3 py-1 rounded-full text-xs font-bold bg-amber-600 text-white flex items-center gap-1.5 shadow-sm";
+            playerIndicatorText.textContent = "玩家 2 回合";
+          }
+          gamePromptText.textContent = `請 Player ${State.activePlayer} 輸入猜測`;
+        }
+      } else {
+        if (State.activePlayer === 1) {
+          playerIndicator.className = "px-3 py-1 rounded-full text-xs font-bold bg-indigo-600 text-white flex items-center gap-1.5 shadow-sm";
+          playerIndicatorText.textContent = "輪到 Player 1 猜測";
+          gamePromptText.textContent = "解碼 Player 2 設定的題目";
+        } else {
+          playerIndicator.className = "px-3 py-1 rounded-full text-xs font-bold bg-amber-600 text-white flex items-center gap-1.5 shadow-sm";
+          playerIndicatorText.textContent = "輪到 Player 2 猜測";
+          gamePromptText.textContent = "解碼 Player 1 設定的題目";
+        }
+      }
+    }
+
+    /* ==========================================================================
+       Mode & Option Switchers
+       ========================================================================== */
+    modeSameBtn.addEventListener('click', () => {
+      if (State.gameMode === 'SAME') return;
+      State.gameMode = 'SAME';
+      modeSameBtn.className = "px-3 py-1.5 rounded-lg transition bg-white text-indigo-700 shadow-sm";
+      modeCustomBtn.className = "px-3 py-1.5 rounded-lg transition text-slate-600 hover:text-slate-900";
+      playerCountWrapper.classList.remove('hidden');
+      startNewGame();
+    });
+
+    modeCustomBtn.addEventListener('click', () => {
+      if (State.gameMode === 'CUSTOM') return;
+      State.gameMode = 'CUSTOM';
+      State.playerCount = 2; // Mutually setting requires 2 players
+      modeCustomBtn.className = "px-3 py-1.5 rounded-lg transition bg-white text-indigo-700 shadow-sm";
+      modeSameBtn.className = "px-3 py-1.5 rounded-lg transition text-slate-600 hover:text-slate-900";
+      playerCountWrapper.classList.add('hidden');
+      startNewGame();
+    });
+
+    p1SelectBtn.addEventListener('click', () => {
+      State.playerCount = 1;
+      p1SelectBtn.className = "px-3 py-1 rounded-lg font-bold border transition bg-indigo-50 border-indigo-200 text-indigo-700";
+      p2SelectBtn.className = "px-3 py-1 rounded-lg font-bold border transition bg-white border-slate-200 text-slate-600 hover:bg-slate-50";
+      startNewGame();
+    });
+
+    p2SelectBtn.addEventListener('click', () => {
+      State.playerCount = 2;
+      p2SelectBtn.className = "px-3 py-1 rounded-lg font-bold border transition bg-indigo-50 border-indigo-200 text-indigo-700";
+      p1SelectBtn.className = "px-3 py-1 rounded-lg font-bold border transition bg-white border-slate-200 text-slate-600 hover:bg-slate-50";
+      startNewGame();
+    });
+
+    digit3Btn.addEventListener('click', () => {
+      if (State.digitsCount === 3) return;
+      State.digitsCount = 3;
+      digit3Btn.className = "px-3 py-1.5 rounded-lg transition bg-white text-indigo-700 shadow-sm";
+      digit4Btn.className = "px-3 py-1.5 rounded-lg transition text-slate-600 hover:text-slate-900";
+      startNewGame();
+    });
+
+    digit4Btn.addEventListener('click', () => {
+      if (State.digitsCount === 4) return;
+      State.digitsCount = 4;
+      digit4Btn.className = "px-3 py-1.5 rounded-lg transition bg-white text-indigo-700 shadow-sm";
+      digit3Btn.className = "px-3 py-1.5 rounded-lg transition text-slate-600 hover:text-slate-900";
+      startNewGame();
+    });
+
+    revealAnswerBtn.addEventListener('click', () => {
+      let answerMsg = '';
+      if (State.gameMode === 'SAME') {
+        answerMsg = `謎底密碼是：${State.secretCode}`;
+      } else {
+        answerMsg = `【P2 設定給 P1 猜的】：${State.p2Secret}\n【P1 設定給 P2 猜的】：${State.p1Secret}`;
+      }
+      errorTip.textContent = answerMsg;
+      setTimeout(() => { errorTip.textContent = ''; }, 6000);
+    });
+
+    restartBtn.addEventListener('click', () => {
+      startNewGame();
+    });
+
+    winPlayAgainBtn.addEventListener('click', () => {
+      winModal.classList.add('hidden');
+      startNewGame();
+    });
+
+    // Rule modal event listeners
+    ruleModalBtn.addEventListener('click', () => ruleModal.classList.remove('hidden'));
+    closeRuleModalBtn.addEventListener('click', () => ruleModal.classList.add('hidden'));
+    closeRuleModalFooterBtn.addEventListener('click', () => ruleModal.classList.add('hidden'));
+    ruleModal.addEventListener('click', (e) => {
+      if (e.target === ruleModal) ruleModal.classList.add('hidden');
+    });
+
+    /* ==========================================================================
+       Handwriting Scratchpad Canvas Implementation
+       ========================================================================== */
+    const canvas = document.getElementById('scratchCanvas');
+    const ctx = canvas.getContext('2d');
+    const penToolBtn = document.getElementById('penToolBtn');
+    const eraserToolBtn = document.getElementById('eraserToolBtn');
+    const clearCanvasBtn = document.getElementById('clearCanvasBtn');
+    const canvasPlaceholder = document.getElementById('canvasEmptyPlaceholder');
+
+    let isDrawing = false;
+    let currentTool = 'pen'; // 'pen' | 'eraser'
+    let hasDrawn = false;
+
+    function resizeCanvas() {
+      const rect = canvas.parentElement.getBoundingClientRect();
+      // Store current drawing to avoid losing strokes on resize
+      let imgData = null;
+      if (canvas.width > 0 && canvas.height > 0) {
+        try { imgData = ctx.getImageData(0, 0, canvas.width, canvas.height); } catch(e){}
+      }
+      canvas.width = rect.width;
+      canvas.height = rect.height;
+
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      if (imgData) {
+        try { ctx.putImageData(imgData, 0, 0); } catch(e){}
+      }
+    }
+
+    window.addEventListener('resize', resizeCanvas);
+
+    function getCoords(e) {
+      const rect = canvas.getBoundingClientRect();
+      if (e.touches && e.touches.length > 0) {
+        return {
+          x: e.touches[0].clientX - rect.left,
+          y: e.touches[0].clientY - rect.top
+        };
+      }
+      return {
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top
+      };
+    }
+
+    function startDraw(e) {
+      isDrawing = true;
+      if (!hasDrawn) {
+        hasDrawn = true;
+        canvasPlaceholder.classList.add('opacity-0');
+      }
+      const { x, y } = getCoords(e);
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+
+      if (currentTool === 'eraser') {
+        ctx.strokeStyle = '#f8fafc'; // Matches bg color
+        ctx.lineWidth = 18;
+      } else {
+        ctx.strokeStyle = '#334155';
+        ctx.lineWidth = 2.5;
+      }
+    }
+
+    function draw(e) {
+      if (!isDrawing) return;
+      e.preventDefault();
+      const { x, y } = getCoords(e);
+      ctx.lineTo(x, y);
+      ctx.stroke();
+    }
+
+    function stopDraw() {
+      if (!isDrawing) return;
+      isDrawing = false;
+      ctx.closePath();
+    }
+
+    canvas.addEventListener('mousedown', startDraw);
+    canvas.addEventListener('mousemove', draw);
+    window.addEventListener('mouseup', stopDraw);
+
+    canvas.addEventListener('touchstart', startDraw, { passive: false });
+    canvas.addEventListener('touchmove', draw, { passive: false });
+    window.addEventListener('touchend', stopDraw);
+
+    penToolBtn.addEventListener('click', () => {
+      currentTool = 'pen';
+      penToolBtn.className = "p-1.5 rounded-lg border transition bg-indigo-50 border-indigo-200 text-indigo-700";
+      eraserToolBtn.className = "p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition";
+    });
+
+    eraserToolBtn.addEventListener('click', () => {
+      currentTool = 'eraser';
+      eraserToolBtn.className = "p-1.5 rounded-lg border transition bg-indigo-50 border-indigo-200 text-indigo-700";
+      penToolBtn.className = "p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition";
+    });
+
+    clearCanvasBtn.addEventListener('click', () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      hasDrawn = false;
+      canvasPlaceholder.classList.remove('opacity-0');
+    });
+
+    // Run when DOM loaded
+    window.addEventListener('DOMContentLoaded', () => {
+      resizeCanvas();
+      startNewGame();
+    });
+  </script>
+</body>
+</html>
